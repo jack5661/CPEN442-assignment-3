@@ -1,7 +1,7 @@
 from pydoc import plain
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from hashlib import sha256
-from cryptography.hazmat.primitives import hashes, padding
+from cryptography.hazmat.primitives import hashes, padding, hmac
 from cryptography.hazmat.primitives.asymmetric import dh
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 import os
@@ -164,21 +164,21 @@ class Protocol:
 
 
     # Setting the key for the current session
-    # TODO: MODIFY AS YOU SEEM FIT
     def SetSessionKey(self, key):
         key = sha256(key).digest()
         self._key = key
-        print(key)
         self._cipher = Cipher(algorithms.AES(key), modes.CTR(self._shared_nonce))
 
 
     # Encrypting messages
-    # TODO: IMPLEMENT ENCRYPTION WITH THE SESSION KEY (ALSO INCLUDE ANY NECESSARY INFO IN THE ENCRYPTED MESSAGE FOR INTEGRITY PROTECTION)
     # RETURN AN ERROR MESSAGE IF INTEGRITY VERITIFCATION OR AUTHENTICATION FAILS
     def EncryptAndProtectMessage(self, plain_text):
         if self._key:
+            h = hmac.HMAC(self._key, hashes.SHA256())
+            h.update(plain_text.encode())
+            signature = h.finalize()
             encryptor = self._cipher.encryptor()
-            cipher_text = encryptor.update(plain_text.encode()) + encryptor.finalize() + sha256(plain_text.encode() + self._key).digest()
+            cipher_text = encryptor.update(plain_text.encode()) + encryptor.finalize() + signature
         else:
             cipher_text = plain_text.encode()
         return cipher_text 
@@ -194,13 +194,22 @@ class Protocol:
             hash = cipher_text[-length_of_hash:]
             decryptor = self._cipher.decryptor()
             plain_text = (decryptor.update(cipher_text[:-length_of_hash]) + decryptor.finalize()).decode()
-            computed_hash = sha256(plain_text.encode() + self._key).digest()
-            if hash != computed_hash:
+            h = hmac.HMAC(self._key, hashes.SHA256())
+            h.update(plain_text.encode())
+            try:
+                h.verify(hash)
+            except:
                 raise IntegrityError("integrity issue")
         else:
             plain_text = cipher_text.decode()
         return plain_text
     
 
+    # Check if key is set
     def keySet(self):
         return self._key != None
+
+    def updateSharedSecret(self, secret):
+        padder = padding.PKCS7(128).padder()
+        padded_secret = padder.update(secret.encode()) + padder.finalize()
+        self._shared_key = padded_secret

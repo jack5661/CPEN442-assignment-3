@@ -51,7 +51,7 @@ class Assignment3VPN:
         self.receive_thread = Thread(target=self._ReceiveMessages, daemon=True)
         
         # Creating a protocol object
-        self.prtcl = Protocol(self.secretEntry.get())
+        self.prtcl = Protocol(self.sharedSecret.get())
      
     # Distructor     
     def __del__(self):
@@ -98,6 +98,7 @@ class Assignment3VPN:
             return False
         
         try:
+            self.prtcl.updateSharedSecret(self.sharedSecret.get())
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             if self.mode.get() == 0:
@@ -149,7 +150,6 @@ class Assignment3VPN:
                     break
 
                 # Checking if the received message is part of your protocol
-                # TODO: MODIFY THE INPUT ARGUMENTS AND LOGIC IF NECESSARY
                 if self.prtcl.IsMessagePartOfProtocol(cipher_text):
                     # Disabling the button to prevent repeated clicks
                     self.secureButton["state"] = "disabled"
@@ -166,7 +166,6 @@ class Assignment3VPN:
                     self._AppendMessage("Other: {}".format(plain_text))
                     
             except Exception as e:
-                traceback.print_exc()
                 self._AppendLog("RECEIVER_THREAD: Error receiving data: {}".format(str(e)))
                 return False
 
@@ -183,7 +182,6 @@ class Assignment3VPN:
         # disable the button to prevent repeated clicks
         self.secureButton["state"] = "disabled"
 
-        # TODO: THIS IS WHERE YOU SHOULD IMPLEMENT THE START OF YOUR MUTUAL AUTHENTICATION AND KEY ESTABLISHMENT PROTOCOL, MODIFY AS YOU SEEM FIT
         init_message = self.prtcl.GetProtocolInitiationMessage()
         self.conn.send(init_message)
 
