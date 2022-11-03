@@ -88,7 +88,6 @@ class Protocol:
             private_key = parameters_bob.generate_private_key()
             b = private_key.public_key().public_numbers().y
             self._dh_private_key = private_key
-
             encryptor = cipher.encryptor()
             next_msg = encryptor.update(nonce_a + self.BOB_MSG.encode() + b.to_bytes(256, 'little')) + nonce_b
         else:
@@ -130,10 +129,10 @@ class Protocol:
                 # Prepare session key establishment
                 pn = dh.DHParameterNumbers(self._dh_p, self._dh_g)
                 parameters_alice = pn.parameters()
-                private_key = parameters_alice.generate_private_key()
+                self._dh_private_key = parameters_alice.generate_private_key()
                 peer_public_number = dh.DHPublicNumbers(b, pn)
-                a = peer_public_number.public_key().public_numbers().y
-                session_key = private_key.exchange(peer_public_number.public_key())
+                a = self._dh_private_key.public_key().public_numbers().y
+                session_key = self._dh_private_key.exchange(peer_public_number.public_key())
 
                 encryptor = cipher.encryptor()
                 next_msg = encryptor.update(self.ALICE_MSG.encode() + nonce_b + a.to_bytes(256, 'little'))
